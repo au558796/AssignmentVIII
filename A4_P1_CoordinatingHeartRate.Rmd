@@ -4,6 +4,9 @@ author: "Riccardo Fusaroli"
 date: "November 6, 2017"
 output: html_document
 ---
+---
+                          "INCOMPLETE"
+---
 
 ```{r setup, include=FALSE}
 #prelude
@@ -102,6 +105,7 @@ HR2 = NULL
 Resp1 = NULL
 Resp2 = NULL
 time = NULL
+name = NULL
 temp= data.frame(HR1, HR2, Resp1, Resp2, time)
 result_df = data.frame()
 n = 1
@@ -127,7 +131,7 @@ for (file in file_list){
   time = i1$time
   #info
   group = str_extract(str_extract(str_extract(file, "S\\w{4}\\d[:punct:]G\\d+"), "G\\d+"), "\\d+")
-  condition = str_extract(str_extract(str_extract(file, "S\\w{4}\\d+[:punct:]G\\d+[:punct:]T\\d+"), "T\\d+"), "\\d+")
+  condition['n'] = str_extract(str_extract(str_extract(file, "S\\w{4}\\d+[:punct:]G\\d+[:punct:]T\\d+"), "T\\d+"), "\\d+")
   name = paste(file)
   temp = data.frame(time, HR1, HR2, Resp1, Resp2, group,condition, name)
    if (n == 1){
@@ -137,12 +141,42 @@ for (file in file_list){
   n = n+1
 }
 
-#make loop for plotting
+#and now for a plot twist
 df <- result_df %>%
-  group_by(name)%>%
-  ggplot(df, aes(time, Resp1))+
+    group_by(name)
+
+cool_plot_bro<-ggplot(df, aes(time, HR1))+
     geom_line()+
-    geom_line(aes(time, Resp2), color = 'Red')
+    geom_line(aes(time, HR2), color = 'Red')+
+    facet_wrap(~name)
+
+#keep:
+# Study2_G10_T1_C
+# Study2_G5_T1_SY
+# Study2_G5_T2_T
+# Study2_G5_T3_C
+# Study2_G6_T2_C
+# Study2_G8_T3_C
+# Study2_G9_T3_T
+
+good<- c("Study2_G10_T1_Conversation.csv" ,"Study2_G5_T1_Synchronous.csv" ,"Study2_G5_T2_TurnTaking.csv","Study2_G5_T3_Conversation.csv","Study2_G6_T2_Conversation.csv","Study2_G8_T3_Conversation.csv", "Study2_G9_T3_TurnTaking.csv")
+
+#try to make new df with only good data
+temp1<- dplyr::filter(result_df, result_df$name=="Study2_G10_T1_Conversation.csv")
+
+temp2<- dplyr::filter(result_df, result_df$name=="Study2_G5_T1_Synchronous.csv")
+
+temp3<- dplyr::filter(result_df, result_df$name=="Study2_G5_T2_TurnTaking.csv")
+
+temp4<- dplyr::filter(result_df, result_df$name=="Study2_G5_T3_Conversation.csv")
+
+temp5<- dplyr::filter(result_df, result_df$name=="Study2_G6_T2_Conversation.csv")
+
+temp6<- dplyr::filter(result_df, result_df$name=="Study2_G8_T3_Conversation.csv")
+
+temp7<- dplyr::filter(result_df, result_df$name=="Study2_G9_T3_TurnTaking.csv")
+
+good_df<- rbind(temp1, temp2, temp3, temp4, temp5, temp6, temp7)
 
 # - Run crqa on all the pre-processed time-series and save the output (don't forget to add columns with study, group, condition and trial). Tip: remember to first assess optimal parameters (dimensions, delay, radius) across all timeseries. Tip: it will often fail, just take whatever parameters you get, select optimal across timeseries parameters and run crqa on all timeseries with those. Tip: double check the rr. When I ran the loop, I got very low rr, so I adjusted the radius until the average of rr across all pairs was approx. 4%.
 
@@ -167,9 +201,6 @@ HRradius = NULL
 REembed = NULL
 REdelay = NULL
 REradius = NULL
-
-names <- as.vector(unique(result_df['name']))
-names <- paste(unlist(names))
 
 for (name in names){
   if (df$name == name){
