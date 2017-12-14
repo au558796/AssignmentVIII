@@ -1,6 +1,6 @@
 ---
 title: "Assignment 4 - Coordinating Heart Rate"
-author: "Riccardo Fusaroli"
+author: "Dana Jensen"
 date: "November 6, 2017"
 output: html_document
 ---
@@ -9,14 +9,15 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-#prelude
+#preamble
 knitr::opts_chunk$set(echo = TRUE)
 setwd("C:/Users/Dana/Desktop/METHODS III/AssignmentVIII")
 library(pacman)
-p_load(ggplot2, caret, groupdata2, dplyr, tidyr, crqa, stringr, lmerTest, lme4, magrittr)
+p_load(ggplot2, caret, groupdata2, dplyr, tidyr, crqa, stringr, lmerTest, lme4, magrittr, cvms, gridExtra)
 convo = read.csv("Study2_G7_T1_Conversation.csv")
-#sync = read.csv("Study2_G7_T2_Synchronous.csv")
-#turn = read.csv("Study2_G7_T3_TurnTaking.csv")
+sync = read.csv("Study2_G7_T2_Synchronous.csv")
+turns = read.csv("Study2_G7_T3_TurnTaking.csv")
+
 ```
 ## Analysing Heart Rate and Respiration data
 ```{r}
@@ -27,7 +28,7 @@ convo = read.csv("Study2_G7_T1_Conversation.csv")
 #   N.B: remember the slides: artifacts, downsampling, scaling.
 #   N.B. The gridExtra::grid.arrange() function allows you to display the plots side by side. E.g. grid.arrange(plot1, plot2, plot3, ncol=3)
 
-#removing artifacts
+#STEP ONE: REMOVING ARTIFACTS
 removeOuts = function(ts,threshold){
   ts[ts> (mean(ts, na.rm=T)+
       (threshold*sd(ts,na.rm=T))) |
@@ -36,201 +37,637 @@ removeOuts = function(ts,threshold){
 mean(ts, na.rm=T)
 return(ts)}
 threshold=2.5
+
+#Condition 1
 convo$HR1 = removeOuts(convo$HR1,threshold)
 convo$HR2 = removeOuts(convo$HR2,threshold)
 convo$Resp1 = removeOuts(convo$Resp1,threshold)
 convo$Resp2 = removeOuts(convo$Resp2,threshold)
 
+#Condition 2
+sync$HR1 = removeOuts(sync$HR1,threshold)
+sync$HR2 = removeOuts(sync$HR2,threshold)
+sync$Resp1 = removeOuts(sync$Resp1,threshold)
+sync$Resp2 = removeOuts(sync$Resp2,threshold)
 
-#scaling
-convo$scaleResp1 = scale(convo$Resp1)
-convo$scaleResp2 = scale(convo$Resp2)
-convo$scaleHR1 = scale(convo$HR1)
-convo$scaleHR2 = scale(convo$HR2)
+#Condtition 3
+turns$HR1 = removeOuts(turns$HR1,threshold)
+turns$HR2 = removeOuts(turns$HR2,threshold)
+turns$Resp1 = removeOuts(turns$Resp1,threshold)
+turns$Resp2 = removeOuts(turns$Resp2,threshold)
 
-#downsampling
+#STEP TWO: SCALING
+
+#Condition 1
+convo$Resp1 = scale(convo$Resp1)
+convo$Resp2 = scale(convo$Resp2)
+convo$HR1 = scale(convo$HR1)
+convo$HR2 = scale(convo$HR2)
+
+#Condition 2
+sync$Resp1 = scale(sync$Resp1)
+sync$Resp2 = scale(sync$Resp2)
+sync$HR1 = scale(sync$HR1)
+sync$HR2 = scale(sync$HR2)
+
+#Condition 3
+turns$Resp1 = scale(turns$Resp1)
+turns$Resp2 = scale(turns$Resp2)
+turns$HR1 = scale(turns$HR1)
+turns$HR2 = scale(turns$HR2)
+
+#STEP THREE: DOWN-SAMPLING
+
+#Condition 1
 convo1 = convo%>%
   group(n=100,method='greedy')%>% 
-  dplyr::summarise(time=mean(time, na.rm=T),HR1=mean(scaleHR1, na.rm = T),HR2=mean(scaleHR2, na.rm = T),Resp1=mean(scaleResp1, na.rm = T),Resp2=mean(scaleResp2, na.rm = T))
+  dplyr::summarise(time=mean(time[!is.na(time) & !is.nan(time) & !is.infinite(time)]),HR1=mean(HR1[!is.na(HR1) & !is.nan(HR1) & !is.infinite(HR1)]),HR2=mean(HR2[!is.na(HR2) & !is.nan(HR2) & !is.infinite(HR2)]),RESP1=mean(Resp1[!is.na(Resp1) & !is.nan(Resp1) & !is.infinite(Resp1)]),RESP2=mean(Resp2[!is.na(Resp2) & !is.nan(Resp2) & !is.infinite(Resp2)]))
 
-#plotting
-plot1<-ggplot(convo1, aes(time, Resp1))+
-  geom_line()+
-  geom_line(aes(time, Resp2), color = 'Red')
-plot2<-ggplot(convo1, aes(time, HR1))+
-  geom_line()+
-  geom_line(aes(time, HR2), color = 'Red')
-plot3<-ggplot(convo1, aes(time, HR1))+
-  geom_line()+
-  geom_line(aes(time, Resp1), color = 'Red')
-plot4<-ggplot(convo1, aes(time, HR2))+
-  geom_line()+
-  geom_line(aes(time, Resp2), color = 'Red')
+#Condition 2
+sync1 = sync%>%
+  group(n=100,method='greedy')%>% 
+  dplyr::summarise(time=mean(time[!is.na(time) & !is.nan(time) & !is.infinite(time)]),HR1=mean(HR1[!is.na(HR1) & !is.nan(HR1) & !is.infinite(HR1)]),HR2=mean(HR2[!is.na(HR2) & !is.nan(HR2) & !is.infinite(HR2)]),RESP1=mean(Resp1[!is.na(Resp1) & !is.nan(Resp1) & !is.infinite(Resp1)]),RESP2=mean(Resp2[!is.na(Resp2) & !is.nan(Resp2) & !is.infinite(Resp2)]))
 
-#not doing what I want it to do?
-MegaPlot<-gridExtra::grid.arrange(plot1,plot2,plot3,plot4, ncol = 4)
+#Condition 3
+turns1 = turns%>%
+  group(n=100,method='greedy')%>% 
+  dplyr::summarise(time=mean(time[!is.na(time) & !is.nan(time) & !is.infinite(time)]),HR1=mean(HR1[!is.na(HR1) & !is.nan(HR1) & !is.infinite(HR1)]),HR2=mean(HR2[!is.na(HR2) & !is.nan(HR2) & !is.infinite(HR2)]),RESP1=mean(Resp1[!is.na(Resp1) & !is.nan(Resp1) & !is.infinite(Resp1)]),RESP2=mean(Resp2[!is.na(Resp2) & !is.nan(Resp2) & !is.infinite(Resp2)]))
+
+#STEP FOUR: PLOTTING
+#(I'm sorry you have to see this *embarrassed emoji*)
+
+#Condition 1
+H1H2_1<-ggplot(convo1, aes(time, HR1))+
+  geom_line()+
+  geom_line(aes(time, HR2), color = 'Red')+
+  labs(title ="Condition1 HR 1&2", x = "Time", y = "HR")
+R1R2_1<-ggplot(convo1, aes(time, RESP1))+
+  geom_line()+
+  geom_line(aes(time, RESP2), color = 'Red')+
+  labs(title ="Condition1 RESP 1&2", x = "Time", y = "RESP")
+H1R2_1<-ggplot(convo1, aes(time, HR1))+
+  geom_line()+
+  geom_line(aes(time, RESP2), color = 'Red')+
+  labs(title ="Condition1 HR1 & RESP2", x = "Time", y = "Scaled HR & RESP")
+H2R1_1<-ggplot(convo1, aes(time, HR2))+
+  geom_line()+
+  geom_line(aes(time, RESP1), color = 'Red')+
+  labs(title ="Condition1 HR2 & RESP1", x = "Time", y = "Scaled HR & RESP")
+
+#Condition 2
+H1H2_2<-ggplot(sync1, aes(time, HR1))+
+  geom_line()+
+  geom_line(aes(time, HR2), color = 'Red')+
+  labs(title ="Condition2 HR 1&2", x = "Time", y = "HR")
+R1R2_2<-ggplot(sync1, aes(time, RESP1))+
+  geom_line()+
+  geom_line(aes(time, RESP2), color = 'Red')+
+  labs(title ="Condition2 RESP 1&2", x = "Time", y = "RESP")
+H1R2_2<-ggplot(sync1, aes(time, HR1))+
+  geom_line()+
+  geom_line(aes(time, RESP2), color = 'Red')+
+  labs(title ="Condition2 HR1 & RESP2", x = "Time", y = "Scaled HR & RESP")
+H2R1_2<-ggplot(sync1, aes(time, HR2))+
+  geom_line()+
+  geom_line(aes(time, RESP1), color = 'Red')+
+  labs(title ="Condition2 HR2 & RESP1", x = "Time", y = "Scaled HR & RESP")
+
+#Condition 3
+H1H2_3<-ggplot(turns1, aes(time, HR1))+
+  geom_line()+
+  geom_line(aes(time, HR2), color = 'Red')+
+  labs(title ="Condition3 HR 1&2", x = "Time", y = "HR")
+R1R2_3<-ggplot(turns1, aes(time, RESP1))+
+  geom_line()+
+  geom_line(aes(time, RESP2), color = 'Red')+
+  labs(title ="Condition3 RESP 1&2", x = "Time", y = "RESP")
+H1R2_3<-ggplot(turns1, aes(time, HR1))+
+  geom_line()+
+  geom_line(aes(time, RESP2), color = 'Red')+
+  labs(title ="Condition3 HR1 & RESP2", x = "Time", y = "Scaled HR & RESP")
+H2R1_3<-ggplot(turns1, aes(time, HR2))+
+  geom_line()+
+  geom_line(aes(time, RESP1), color = 'Red')+
+  labs(title ="Condition3 HR2 & RESP1", x = "Time", y = "Scaled HR & RESP")
+
+
+H1H2<-grid.arrange(H1H2_1,H1H2_2,H1H2_3, ncol = 3)
+R1R2<-grid.arrange(R1R2_1,R1R2_2,R1R2_3, ncol = 3)
+HR<-grid.arrange(H1R2_1,H1R2_2,H1R2_3,H2R1_1,H2R1_2,H2R1_3, ncol = 3)
 # - Can you eye-ball which condition if any displays more physiological coordination?
+```
 
+```{r}
 # - Run crqa on heart rate and respiration data (find parameters, run crqa)
 
-par = list(lgM =  50, steps = seq(1, 6, 1),  radiusspan = 100,  radiussample = 40, normalize = 0,  rescale = 0,  mindiagline = 2,  minvertline = 2,  tw = 0,  whiteline = FALSE,  recpt = FALSE,  fnnpercent = 10,  typeami = 'mindip')
+#okay, now back to business
+par = list(lgM =  10, steps = seq(1, 6, 1),  radiusspan = 100,  radiussample = 40, normalize = 0,  rescale = 0,  mindiagline = 2,  minvertline = 2,  tw = 0,  whiteline = FALSE,  recpt = FALSE,  fnnpercent = 10,  typeami = 'mindip')
 
-#finding optimized parameters
-#cannot find for HR
+#FINDING OPTIMIZED PARAMETERS
+# I am seriously so sorry for what is about to happen....
+
+#######CONDITION 1#######
+
+###Heart Rate 1&2
+
+#optimizing parameters
 try(optimizeParam(convo1$HR1, convo1$HR2, par, min.rec = 1, max.rec = 10))
-try(optimizeParam(convo1$Resp1, convo1$Resp2, par, min.rec = 3.5, max.rec = 4.5))
+#delay = 0(porque?), embed = 20, radius = 0.69
 
-#rqa
-rqa_analysis= function(x, y)(  
-  crqa(x, y, embed = 2, delay = 24, normalize = 0, rescale = 0, radius = 033723308,
-  mindiagline = 2, minvertline = 1)
-)
-rqa_analysis(convo1$HR1, convo1$HR2)
-rqa_analysis(convo1$Resp1, convo1$Resp2)
-rqa_analysis(convo1$HR1, convo1$Resp1)
-rqa_analysis(convo1$HR2, convo1$Resp1)
+#crqa
+HR1<-crqa(convo1$HR1, convo1$HR2, embed = 20, delay = 1, normalize = 0, rescale = 0, radius = 0.69, mindiagline = 2, minvertline = 1)
 
+#Making Plot
+RP1=HR1$RP 
+RP_1 = matrix(as.numeric(RP1), nrow = ncol(RP1))  
+cols = c("white","black") 
+image(RP_1, xlab = "HR1", ylab = "HR2", col = cols) 
+
+#------------------------------------------------------------
+###Respiration 1
+
+#optimizing parameters
+try(optimizeParam(convo1$RESP1, convo1$RESP2, par, min.rec = 1, max.rec = 10))
+#delay = 4, embed = 2, radius = 0.35
+
+#crqa
+R1<-crqa(convo1$RESP1, convo1$RESP2, embed = 2, delay = 4, normalize = 0, rescale = 0, radius = .35, mindiagline = 2, minvertline = 1)
+
+#Making Plot
+RP2<-R1$RP 
+RP_2 = matrix(as.numeric(RP2), nrow = ncol(RP2)) 
+cols = c("white","black") 
+image(RP_2, xlab = "RESP1", ylab = "RESP2", col = cols) 
+#------------------------------------------------------------
+
+###Heart rate 1 and Respiration 2
+
+#optimizing parameters
+try(optimizeParam(convo1$HR1,convo1$RESP2, par, min.rec = 1, max.rec = 10))
+#delay = 5, embed = 20, radius = 2.42
+
+#crqa
+HRR1<-crqa(convo1$HR1, convo1$RESP2, embed = 20, delay = 5, normalize = 0, rescale = 0, radius = 2.42, mindiagline = 2, minvertline = 1)
+
+#Making Plot
+RP3=HRR1$RP 
+RP_3 = matrix(as.numeric(RP3), nrow = ncol(RP3)) 
+cols = c("white","black") 
+image(RP_3, xlab = "HR1", ylab = "RESP2", col = cols) 
+#------------------------------------------------------------
+###Heart Rate 2 & Respiration 1
+
+#optimizing parameters
+try(optimizeParam(convo1$HR2, convo1$RESP2, par, min.rec = 1, max.rec = 10))
+#delay = 0, embed = 8, radius = 0.36
+
+#crqa
+HRR2<-crqa(convo1$HR2, convo1$RESP2, embed = 8, delay = 1, normalize = 0, rescale = 0, radius = 0.36,mindiagline = 2, minvertline = 1)
+
+#Making plot
+RP4=HRR2$RP 
+RP_4 = matrix(as.numeric(RP4), nrow = ncol(RP4)) 
+cols = c("white","black") 
+image(RP_1, xlab = "HR2", ylab = "Resp1", col = cols) 
+ 
+#######CONDITION 2#######
+
+###Heart Rate 1&2
+
+#optimizing parameters
+try(optimizeParam(sync1$HR1, sync1$HR2, par, min.rec = 1, max.rec = 10))
+#delay = 8, embed = 20, radius = 2.31
+
+#crqa
+HR1<-crqa(sync1$HR1, sync1$HR2, embed = 20, delay = 8, normalize = 0, rescale = 0, radius = 2.31, mindiagline = 2, minvertline = 1)
+
+#Making Plot
+RP1=HR1$RP 
+RP_1 = matrix(as.numeric(RP1), nrow = ncol(RP1))  
+cols = c("white","black") 
+image(RP_1, xlab = "HR1", ylab = "HR2", col = cols) 
+
+#------------------------------------------------------------
+###Respiration 1
+
+#optimizing parameters
+try(optimizeParam(sync1$RESP1, sync1$RESP2, par, min.rec = 1, max.rec = 10))
+#delay = 9, embed = 16, radius = 2.79
+
+#crqa
+R1<-crqa(sync1$RESP1, sync1$RESP2, embed = 16, delay = 9, normalize = 0, rescale = 0, radius = 2.79, mindiagline = 2, minvertline = 1)
+
+#Making Plot
+RP2<-R1$RP 
+RP_2 = matrix(as.numeric(RP2), nrow = ncol(RP2)) 
+cols = c("white","black") 
+image(RP_2, xlab = "RESP1", ylab = "RESP2", col = cols) 
+#------------------------------------------------------------
+
+###Heart rate 1 and Respiration 2
+
+#optimizing parameters
+try(optimizeParam(sync1$HR1,sync1$RESP2, par, min.rec = 1, max.rec = 10))
+#delay = 9, embed = 16, radius = 2.79
+
+#crqa
+HRR1<-crqa(sync1$HR1, sync1$RESP2, embed = 16, delay = 9, normalize = 0, rescale = 0, radius = 2.79, mindiagline = 2, minvertline = 1)
+
+#Making Plot
+RP3=HRR1$RP 
+RP_3 = matrix(as.numeric(RP3), nrow = ncol(RP3)) 
+cols = c("white","black") 
+image(RP_3, xlab = "HR1", ylab = "RESP2", col = cols) 
+#------------------------------------------------------------
+###Heart Rate 2 & Respiration 1
+
+#optimizing parameters
+try(optimizeParam(sync1$HR2, sync1$RESP1, par, min.rec = 1, max.rec = 10))
+#delay = 0, embed = 7, radius = 0.36
+
+#crqa
+HRR2<-crqa(sync1$HR2, sync1$RESP1, embed = 7, delay = 1, normalize = 0, rescale = 0, radius = 0.36,mindiagline = 2, minvertline = 1)
+
+#Making plot
+RP4=HRR2$RP 
+RP_4 = matrix(as.numeric(RP4), nrow = ncol(RP4)) 
+cols = c("white","black") 
+image(RP_4, xlab = "HR2", ylab = "Resp1", col = cols) 
+
+#######CONDITION 3#######
+
+###Heart Rate 1&2
+
+#optimizing parameters
+try(optimizeParam(turns1$HR1, turns1$HR2, par, min.rec = 1, max.rec = 10))
+#delay = 8, embed = 20, radius = 2.31
+
+#crqa
+HR1<-crqa(turns1$HR1, turns1$HR2, embed = 20, delay = 8, normalize = 0, rescale = 0, radius = 2.31, mindiagline = 2, minvertline = 1)
+
+#Making Plot
+RP1=HR1$RP 
+RP_1 = matrix(as.numeric(RP1), nrow = ncol(RP1))  
+cols = c("white","black") 
+image(RP_1, xlab = "HR1", ylab = "HR2", col = cols) 
+
+#------------------------------------------------------------
+###Respiration 1
+
+#optimizing parameters
+try(optimizeParam(turns1$RESP1, turns1$RESP2, par, min.rec = 1, max.rec = 10))
+#delay = 9, embed = 16, radius = 2.79
+
+#crqa
+R1<-crqa(turns1$RESP1, turns1$RESP2, embed = 16, delay = 9, normalize = 0, rescale = 0, radius = 2.79, mindiagline = 2, minvertline = 1)
+
+#Making Plot
+RP2<-R1$RP 
+RP_2 = matrix(as.numeric(RP2), nrow = ncol(RP2)) 
+cols = c("white","black") 
+image(RP_2, xlab = "RESP1", ylab = "RESP2", col = cols) 
+#------------------------------------------------------------
+
+###Heart rate 1 and Respiration 2
+
+#optimizing parameters
+try(optimizeParam(turns1$HR1,turns1$RESP2, par, min.rec = 1, max.rec = 10))
+#delay = 9, embed = 16, radius = 2.79
+
+#crqa
+HRR1<-crqa(turns1$HR1, turns1$RESP2, embed = 16, delay = 9, normalize = 0, rescale = 0, radius = 2.79, mindiagline = 2, minvertline = 1)
+
+#Making Plot
+RP3=HRR1$RP 
+RP_3 = matrix(as.numeric(RP3), nrow = ncol(RP3)) 
+cols = c("white","black") 
+image(RP_3, xlab = "HR1", ylab = "RESP2", col = cols) 
+#------------------------------------------------------------
+###Heart Rate 2 & Respiration 1
+
+#optimizing parameters
+try(optimizeParam(turns1$HR2, turns1$RESP1, par, min.rec = 1, max.rec = 10))
+#delay = 0, embed = 7, radius = 0.36
+
+#crqa
+HRR2<-crqa(turns1$HR2, turns1$RESP1, embed = 7, delay = 1, normalize = 0, rescale = 0, radius = 0.36,mindiagline = 2, minvertline = 1)
+
+#Making plot
+RP4=HRR2$RP 
+RP_4 = matrix(as.numeric(RP4), nrow = ncol(RP4)) 
+cols = c("white","black") 
+image(RP_4, xlab = "HR2", ylab = "Resp1", col = cols) 
+#and this is the point which my computer could no longer take the abuse...
 # - Does this tell you more than just eyeballing the plots?
+```
 
+```{r}
 ### Systematically pre-process the data
 # - Loop through all the files (either with a loop or with a function), check which files should be excluded, if any, and save the pre-processed time-series. Tip: plot and visually inspect the data to figure out which should be excluded.
 
-path<-("C:/Users/Dana/Desktop/METHODS III/AssignmentVIII")
+#rm(result_df)
+path<-("C:/Users/Dana/Desktop/METHODS III/AssignmentVIII/data")
 folder = file.path(path)
 file_list<- list.files(path = folder, recursive = TRUE, pattern = "*.csv")
+study = NULL
 group = NULL
 condition = NULL
 HR1 = NULL
 HR2 = NULL
-Resp1 = NULL
-Resp2 = NULL
+RESP1 = NULL
+RESP2 = NULL
 time = NULL
 name = NULL
-temp= data.frame(HR1, HR2, Resp1, Resp2, time)
+temp= data.frame(HR1, HR2, RESP1, RESP2, time)
 result_df = data.frame()
 n = 1
 
 #loop to pre-process data
+
+#ONLY NEED TO DO THIS ONCE
 for (file in file_list){
   i = read.csv(file)
   #downsample
   i1 = i%>%
     group(n=100,method='greedy')%>%
-    dplyr::summarise(time=mean(time, na.rm=T),HR1=mean(HR1, na.rm = T),HR2=mean(HR2, na.rm = T),Resp1=mean(Resp1, na.rm = T),Resp2=mean(Resp2, na.rm = T))
+    dplyr::summarise(time=mean(time, na.rm=T),HR1=mean(HR1, na.rm = T),HR2=mean(HR2, na.rm = T),RESP1=mean(Resp1, na.rm = T),RESP2=mean(Resp2, na.rm = T))
   #removing outliers
   threshold=2.5
   HR1 = removeOuts(i1$HR1,threshold)
   HR2 = removeOuts(i1$HR2,threshold)
-  Resp1 = removeOuts(i1$Resp1,threshold)
-  Resp2 = removeOuts(i1$Resp2,threshold)
+  RESP1 = removeOuts(i1$RESP1,threshold)
+  RESP2 = removeOuts(i1$RESP2,threshold)
   #scaling
-  Resp1 = scale(i1$Resp1)
-  Resp2 = scale(i1$Resp2)
+  RESP1 = scale(i1$RESP1)
+  RESP2 = scale(i1$RESP2)
   HR1 = scale(i1$HR1)
   HR2 = scale(i1$HR2)
   time = i1$time
   #info
-  group = str_extract(str_extract(str_extract(file, "S\\w{4}\\d[:punct:]G\\d+"), "G\\d+"), "\\d+")
-  condition['n'] = str_extract(str_extract(str_extract(file, "S\\w{4}\\d+[:punct:]G\\d+[:punct:]T\\d+"), "T\\d+"), "\\d+")
+  group = rep(str_extract(str_extract(str_extract(file, "S\\w{4}\\d[:punct:]G\\d+"), "G\\d+"), "\\d+"), length(i1$time))
+  condition['n'] = rep(str_extract(str_extract(str_extract(file, "S\\w{4}\\d+[:punct:]G\\d+[:punct:]T\\d+"), "T\\d+"), "\\d+"), length(i1$time))
+  study['n'] = rep(str_extract(str_extract(str_extract(file, "S\\w{4}\\d+[:punct:]G\\d+[:punct:]T\\d+"), "S\\w{4}\\d+"), "\\d+"), length(i1$time))
   name = paste(file)
-  temp = data.frame(time, HR1, HR2, Resp1, Resp2, group,condition, name)
-   if (n == 1){
-     result_df = temp}
-   else{
-     result_df = rbind(result_df, temp)}
+  temp = data.frame(time , HR1, HR2, RESP1, RESP2, name, study, group, condition)
+  write.csv(temp, paste('clean', name, 'csv', sep = '.'))
+  # 
+  # if (n == 1){
+  #    result_df = temp}
+  #  else{
+  #    result_df = rbind(result_df, temp)}
+  # 
   n = n+1
 }
 
-#and now for a plot twist
-df <- result_df %>%
-    group_by(name)
+time = NULL
+HR1 = NULL
+HR2 = NULL
+RESP1 = NULL
+RESP2 = NULL
 
-cool_plot_bro<-ggplot(df, aes(time, HR1))+
-    geom_line()+
-    geom_line(aes(time, HR2), color = 'Red')+
-    facet_wrap(~name)
+make_effing_plots= function(file){
+  i = read.csv(file)
+  name = paste(file)
+  temp = data.frame(time = i$time, HR1 = i$HR1, HR2 = i$HR2, RESP1 = i$RESP1, RESP2 = i$RESP2)
+  plot_p1 = ggplot(temp, aes(x = time, y = HR1)) + 
+    geom_line(color = "red") +   
+    geom_line(aes(x = time, y = HR2), color = "green")
+  plot_p2 = ggplot(temp, aes(x = time, y = RESP1)) + 
+    geom_line(color = "red") +   
+    geom_line(aes(x = time, y = RESP2), color = "green")
+  megaplot<-grid.arrange(plot_p1, plot_p2) 
+  return(megaplot)
+}
 
-#keep:
-# Study2_G10_T1_C
-# Study2_G5_T1_SY
-# Study2_G5_T2_T
-# Study2_G5_T3_C
-# Study2_G6_T2_C
-# Study2_G8_T3_C
-# Study2_G9_T3_T
+path<-("C:/Users/Dana/Desktop/METHODS III/AssignmentVIII")
+folder = file.path(path)
+file_list<- list.files(path = folder, recursive = TRUE, pattern = "*.csv")
 
-good<- c("Study2_G10_T1_Conversation.csv" ,"Study2_G5_T1_Synchronous.csv" ,"Study2_G5_T2_TurnTaking.csv","Study2_G5_T3_Conversation.csv","Study2_G6_T2_Conversation.csv","Study2_G8_T3_Conversation.csv", "Study2_G9_T3_TurnTaking.csv")
+#I am sooooooo satisfied with myself right now
+make_effing_plots(file = file_list[1])#no for resp
+make_effing_plots(file = file_list[2])#no
+make_effing_plots(file = file_list[3])#ok
+make_effing_plots(file = file_list[4])#no for resp
+make_effing_plots(file = file_list[5])#no for resp
+make_effing_plots(file = file_list[6])#ok
+make_effing_plots(file = file_list[7])#ok
+make_effing_plots(file = file_list[8])#ok
+make_effing_plots(file = file_list[9])#ok
+make_effing_plots(file = file_list[10])#ok
+make_effing_plots(file = file_list[11])#ok
+make_effing_plots(file = file_list[12])#ok
+make_effing_plots(file = file_list[13])#ok
+make_effing_plots(file = file_list[14])#ok
+make_effing_plots(file = file_list[15])#ok
+make_effing_plots(file = file_list[16])#no for hr
+make_effing_plots(file = file_list[17])#no for hr
+make_effing_plots(file = file_list[18])#ok
+make_effing_plots(file = file_list[19])#ok
+make_effing_plots(file = file_list[20])#ok
+make_effing_plots(file = file_list[21])#no for hr
+make_effing_plots(file = file_list[22])#ok
+make_effing_plots(file = file_list[23])#ok
+make_effing_plots(file = file_list[24])#ok
+make_effing_plots(file = file_list[25])#ok
+make_effing_plots(file = file_list[26])#ok
+make_effing_plots(file = file_list[27])#ok
+make_effing_plots(file = file_list[28])#no for hr
+make_effing_plots(file = file_list[29])#ok
+make_effing_plots(file = file_list[30])#ok
+
+
+names<-unlist(unique(file_list))#picks up old unprocessed data
+names<-names[1:30]#we only want clean data
+names<-names[3:30]#remove unwanted rebel scum from galactic republic
 
 #try to make new df with only good data
-temp1<- dplyr::filter(result_df, result_df$name=="Study2_G10_T1_Conversation.csv")
 
-temp2<- dplyr::filter(result_df, result_df$name=="Study2_G5_T1_Synchronous.csv")
+#-I really want to make this work, but running out of time so I have to do it manually. So much easier to do in python. -.-
 
-temp3<- dplyr::filter(result_df, result_df$name=="Study2_G5_T2_TurnTaking.csv")
+# file_list<- list.files(path = folder, recursive = TRUE, pattern = "*.csv")
+# file_list<- file_list[1:30]
+# n = 1
+# i = file_list[1]
+# for (x in length(names)){#28
+#   if (name %in% names ==  file %in% file_list){#if name is same as file
+#     i = read.csv(file)#only read files we want
+#     temp = data.frame(time = i$time, HR1 = i$HR1, HR2 = i$HR2, RESP1 = i$RESP1, RESP2 = i$RESP2)#make df
+#      if (n == 1){
+#        result_df = temp
+#     }else{
+#        result_df = rbind(result_df, temp)}
+#   n = n+1
+# }}
 
-temp4<- dplyr::filter(result_df, result_df$name=="Study2_G5_T3_Conversation.csv")
+S1G1T3<- read.csv("clean.Study1_G1_T3_SelfPaced.csv.csv")
+S1G2T3<- read.csv("clean.Study1_G2_T3_SelfPaced.csv.csv")
+S1G3T1<- read.csv("clean.Study1_G3_T1_SelfPaced.csv.csv")
+S1G3T2<- read.csv("clean.Study1_G3_T2_TurnTaking.csv.csv") 
+S1G3T3<- read.csv("clean.Study1_G3_T3_Synchronous.csv.csv")
+S1G4T1<- read.csv("clean.Study1_G4_T1_Synchronous.csv.csv")
+S1G4T2<- read.csv("clean.Study1_G4_T2_SelfPaced.csv.csv")
+S1G4T3<- read.csv("clean.Study1_G4_T3_TurnTaking.csv.csv")
+S2G10T1<- read.csv("clean.Study2_G10_T1_Conversation.csv.csv")
+S2G10T2<- read.csv("clean.Study2_G10_T2_TurnTaking.csv.csv") 
+S2G10T3<- read.csv("clean.Study2_G10_T3_Synchronous.csv.csv")
+S2G5T1<- read.csv("clean.Study2_G5_T1_Synchronous.csv.csv")
+S2G5T2<- read.csv("clean.Study2_G5_T2_TurnTaking.csv.csv") 
+S2G5T3<- read.csv("clean.Study2_G5_T3_Conversation.csv.csv")
+S2G6T1<- read.csv("clean.Study2_G6_T1_TurnTaking.csv.csv")
+S2G6T2<- read.csv("clean.Study2_G6_T2_Conversation.csv.csv")
+S2G7T1<- read.csv("clean.Study2_G7_T1_Conversation.csv.csv")
+S2G7T2<- read.csv("clean.Study2_G7_T2_Synchronous.csv.csv")
+S2G7T3<- read.csv("clean.Study2_G7_T3_TurnTaking.csv.csv")
+S2G8T1<- read.csv("clean.Study2_G8_T1_TurnTaking.csv.csv")
+S2G8T2<- read.csv("clean.Study2_G8_T2_Synchronous.csv.csv")
+S2G8T3<- read.csv("clean.Study2_G8_T3_Conversation.csv.csv")
+S2G9T2<- read.csv("clean.Study2_G9_T2_Conversation.csv.csv")
+S2G9T3<-  read.csv("clean.Study2_G9_T3_TurnTaking.csv.csv")
 
-temp5<- dplyr::filter(result_df, result_df$name=="Study2_G6_T2_Conversation.csv")
+#oh geeze...
+good<- list(S1G1T3,S1G2T3,S1G3T1,S1G3T2,S1G3T3,S1G4T1,S1G4T2,S1G4T3,S2G10T1,S2G10T2,S2G10T3,S2G5T1,S2G5T2,S2G5T3,S2G6T1,S2G6T2,S2G7T1,S2G7T2,S2G7T3,S2G8T1,S2G8T2,S2G8T3,S2G9T2,S2G9T3)
 
-temp6<- dplyr::filter(result_df, result_df$name=="Study2_G8_T3_Conversation.csv")
+# bad<-list(
+# S1G2T1<- read.csv("clean.Study1_G2_T1_TurnTaking.csv.csv"),#(hr) 2
+# S1G2T2<-read.csv("clean.Study1_G2_T2_Synchronous.csv.csv"),#(hr) 3
+# S2G6T3<- read.csv("clean.Study2_G6_T3_Synchronous.csv.csv"),#(resp) 19
+# S2G9T1<- read.csv("clean.Study2_G9_T1_Synchronous.csv.csv")#(resp) 26
+# )
+```
 
-temp7<- dplyr::filter(result_df, result_df$name=="Study2_G9_T3_TurnTaking.csv")
-
-good_df<- rbind(temp1, temp2, temp3, temp4, temp5, temp6, temp7)
-
+```{r}
 # - Run crqa on all the pre-processed time-series and save the output (don't forget to add columns with study, group, condition and trial). Tip: remember to first assess optimal parameters (dimensions, delay, radius) across all timeseries. Tip: it will often fail, just take whatever parameters you get, select optimal across timeseries parameters and run crqa on all timeseries with those. Tip: double check the rr. When I ran the loop, I got very low rr, so I adjusted the radius until the average of rr across all pairs was approx. 4%.
 
-#trying to make OP a function
-OP = function(dataset, t1, t2){ 
-  par = list(lgM =  50, steps = seq(1, 6, 1),  radiusspan = 100,  radiussample = 40, normalize = 0,  rescale = 0,  mindiagline = 2,  minvertline = 2,  tw = 0,  whiteline = FALSE,  recpt = FALSE,  fnnpercent = 10,  typeami = "mindip")
+#this is one hell of a function...
+OP = function(dataset, x){ 
+  par = list(lgM =  10, steps = seq(1, 6, 1),  radiusspan = 100,  radiussample = 40, normalize = 0,  rescale = 0,  mindiagline = 2,  minvertline = 2,  tw = 0,  whiteline = FALSE,  recpt = FALSE,  fnnpercent = 10,  typeami = "mindip")
   opt_param = NULL
-  t1 = dplyr::select(dataset, t1)
-  t2 = dplyr::select(dataset, t2)
-  opt_param = try(optimizeParam(t1, t2, par, min.rec = 3, max.rec = 4))
-  if (length(opt_param) > 1) {
-    op_df = data.frame(opt_param[1], opt_param[2], opt_param[3], n = n) 
-    } else {
-    op_df = data.frame(radius = NA, emddim = NA, delay = NA, n = n)
-    }
-  return(op_df)
+#condition 1: heart rate
+  if (x == "1"){
+    t1 = dplyr::select(dataset, HR1 )
+    t2 = dplyr::select(dataset, HR2 )
+    opt_param = try(optimizeParam(t1, t2, par, min.rec = 1, max.rec = 10))
+      if (length(opt_param) > 1) {
+        radius = opt_param[1]
+        embed = opt_param[2]
+        delay = opt_param[3]
+      }else{
+        radius = NA
+        embed = NA
+        delay = NA
+      }
+    result = c(radius, embed, delay)
+    df<-data.frame(result)
+    name <- comment(dataset) 
+    assign(paste(name,"OP", "HR", sep = "_"), df)
+#Condition 2: respiration    
+    }else if (x == "2"){
+      t1 = dplyr::select(dataset, RESP1 )
+      t2 = dplyr::select(dataset, RESP2 )
+      opt_param = try(optimizeParam(t1, t2, par, min.rec = 1, max.rec = 10))
+      if (length(opt_param) > 1) {
+        radius = opt_param[1]
+        embed = opt_param[2]
+        delay = opt_param[3]
+      }else{
+        radius = NA
+        embed = NA
+        delay = NA
+      }
+      result = c(radius, embed, delay)
+      df<-data.frame(result)
+      name <- comment(dataset) 
+      assign(paste(name,"OP", "RESP", sep = "_"), df)
+      }
+  return(.Last.value)
 }
 
-HRembed = NULL
-HRdelay = NULL
-HRradius = NULL
-REembed = NULL
-REdelay = NULL
-REradius = NULL
+#just a test to make sure it works
+OP(dataset = S1G1T3, x = 1)
 
-for (name in names){
-  if (df$name == name){
-    temp1<-c(OP(df, HR1, HR1), temp1$name<-paste(name))
-    temp2<-c(OP(df, HR1, Resp1), temp1$name<-paste(name))
-    temp3<-c(OP(df, HR2, HR2), temp1$name<-paste(name))
-    temp4<-c(OP(df, HR2, Resp2), temp1$name<-paste(name))
-    temp5<-c(OP(df, HR1, HR2), temp1$name<-paste(name))}
-temp = rbind(temp1, temp2, temp3, temp4, temp5)
-df<- merge(result_df, temp, all = TRUE)
-}
+
+#get the op for each file and save it
+
+df<-data.frame(OP(dataset = S1G2T3, x = 1))
+
+
+for (z in seq(24)){#length(good)=24
+  i = good[z]
+  for (y in seq(2)){
+    df<-data.frame(OP(dataset = i, x = y))
+    if (y == "1"){
+    #I am so sorry you have to see this messy code...  
+    assign(paste(i[[1]][[7]][[1]],"OP", "HR", sep = "_"), df)
+    }else if (y == "2"){
+    assign(paste(i[[1]][[7]][[1]],"OP", "RESP", sep = "_"), df)}
+}}
+
+#then take median of op
+```
+
+```{r}
+
 
 ### Creating controls: shuffled controls
 #  - loop through all pairs and conditions
 #  - shuffle the timeseries (take a timeseries and rearrange its values in a random order). Tip check the sample() function
+
+HR1<- NULL
+HR2<- NULL
+RESP1<- NULL
+RESP2<- NULL
+
+for (i in good){
+  time<-i[[1]][[2]]
+  HR1<-sample(i[[1]][[3]])
+  HR2<-sample(i[[1]][[4]])
+  RESP1<-sample(i[[1]][[5]])
+  RESP2<-sample(i[[1]][[6]])
+  new<- data.frame(time, HR1, HR2, RESP1, RESP2)
+  assign(paste("new",i ,sep = "_"), new)
+  }
+
 #  - run crqa and save the output. NB. which delay, embed, radius parameters should you use?
+dana_crqa<-function(dataframe, condition){
+  if (condition =="1"){
+  result<-crqa(dataframe$HR1, dataframe$HR2, embed = 7, delay = 1, normalize = 0, rescale = 0, radius = 0.36,mindiagline = 2, minvertline = 1)
+  }else if(condition =="2"){
+  result<-crqa(dataframe$RESP1, dataframe$RESP2, embed = 7, delay = 1, normalize = 0, rescale = 0, radius = 0.36,mindiagline = 2, minvertline = 1)  
+  }
+  RR[n]<- result$RR
+  DET[n]<- result$DET
+  maxL[n]<- result$maxL
+  L[n]<- result$L
+  TT[n]<- result$TT
+  NRLINE[n]<- result$NRLINE
+  crqa_df<- data.frame(RR, DET, maxL, L, TT, NRLINE)
+  name <- comment(dataframe) 
+  assign(paste("crqa",name,condition, sep = "_"), crqa_df)}
+  return(crqa_df)
+}
 #  - statistically compare the crqa indexes in real and shuffled pairs
- 
+lmer(RR ~ pairing + condition + (1 | group) 
+
 ### TRICKY! Creating controls: surrogate pair controls
+
 #  - Per each real pair, identify at least one surrogate pair (matching one of the participants, with somebody doing the same task, but in a different pair). Tip: Celine will share a commented script
+
+
 #  - Run crqa on all the surrogate pairs and save the output. NB. which delay, embed, radius parameters should you use?
+
+
 #  - Test whether crqa shows a difference between real and surrogate pairs
 
 ### Testing effects of conditions
+
 #  - make a (probably underpowered) mixed model testing effects of the different conditions on heart rate and respiration coordination
 #  - N.B: would it make sense to include surrogate pairs? and if so how? what would that tell you?
 
+
 ### Effects of respiration coordination on heart rate coordination
+
 #  - describe how you would test those.
-#  - Optional: run the models and report them
+
 ```
 
 # 1) How do you preprocess heart rate and respiration data? Describe the process. If any data needs to be excluded, list the excluded data and motivate the exclusion.
