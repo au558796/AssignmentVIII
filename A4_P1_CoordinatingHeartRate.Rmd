@@ -557,9 +557,6 @@ OP = function(dataset, x){
         delay = NA
       }
     result = c(radius, embed, delay)
-    df<-data.frame(result)
-    name <- comment(dataset) 
-    assign(paste(name,"OP", "HR", sep = "_"), df)
 #Condition 2: respiration    
     }else if (x == "2"){
       t1 = dplyr::select(dataset, RESP1 )
@@ -575,32 +572,98 @@ OP = function(dataset, x){
         delay = NA
       }
       result = c(radius, embed, delay)
-      df<-data.frame(result)
-      name <- comment(dataset) 
-      assign(paste(name,"OP", "RESP", sep = "_"), df)
       }
-  return(.Last.value)
+return(result)
 }
 
 #just a test to make sure it works
-OP(dataset = S1G1T3, x = 1)
+OP(dataset = S1G1T3, x = 2)
+df<-data.frame((OP(dataset = S1G2T3, x = 1)))
 
 
-#get the op for each file and save it
+##Can't get this one to work either so I have to do it manually :(
+#all I want is to go through every dataframe in 'good' and get the optimized parameters, is that too much to ask?
+# for (i in good){
+#   for (y in seq(2)){
+#     temp<-data.frame(OP(dataset = i, x = y))
+#     type<- NULL
+#     if(y == "1"){
+#       type<- "HR"
+#       temp$type<-type
+#       df<-temp
+#     }else if(y == "2"){
+#       type<-"RESP"
+#       temp$type<-type
+#       df<-rbind(temp,df)
+#     }
+# }}
 
-df<-data.frame(OP(dataset = S1G2T3, x = 1))
+#jesus christ...
+df<-data.frame((OP(dataset = S1G1T3, x = 1)),file = "S1G1T3", type="HR" )
+df<- rbind(df, data.frame((OP(dataset = S1G1T3, x = 2)),file = "S1G1T3", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S1G2T3, x = 1)),file = "S1G2T3", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S1G2T3, x = 2)),file = "S1G2T3", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S1G3T1, x = 1)),file = "S1G3T1", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S1G3T1, x = 2)),file = "S1G3T1", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S1G3T2, x = 1)),file = "S1G3T2", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S1G3T2, x = 2)),file = "S1G3T2", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S1G3T3, x = 1)),file = "S1G3T3", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S1G3T3, x = 2)),file = "S1G3T3", type="RESP"))#bitch
+df<- rbind(df, data.frame((OP(dataset = S1G4T1, x = 1)),file = "S1G4T1", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S1G4T1, x = 2)),file = "S1G4T1", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S1G4T2, x = 1)),file = "S1G4T2", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S1G4T2, x = 2)),file = "S1G4T2", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S1G4T3, x = 1)),file = "S1G4T3", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S1G4T3, x = 2)),file = "S1G4T3", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G5T1, x = 1)),file = "S2G5T1", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G5T1, x = 2)),file = "S2G5T1", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G5T2, x = 1)),file = "S2G5T2", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G5T2, x = 2)),file = "S2G5T2", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G5T3, x = 1)),file = "S2G5T3", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G5T3, x = 2)),file = "S2G5T3", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G6T1, x = 1)),file = "S2G6T1", type="HR"))#bitch
+df<- rbind(df, data.frame((OP(dataset = S2G6T1, x = 2)),file = "S2G6T1", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G6T2, x = 1)),file = "S2G6T2", type="HR"))#bitch
+df<- rbind(df, data.frame((OP(dataset = S2G6T2, x = 2)),file = "S2G6T2", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G7T1, x = 1)),file = "S2G7T1", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G7T1, x = 2)),file = "S2G7T1", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G7T2, x = 1)),file = "S2G7T2", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G7T2, x = 2)),file = "S2G7T2", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G7T3, x = 1)),file = "S2G7T3", type="HR"))#oh c'mon
+df<- rbind(df, data.frame((OP(dataset = S2G7T3, x = 2)),file = "S2G7T3", type="RESP"))#you too
+df<- rbind(df, data.frame((OP(dataset = S2G8T1, x = 1)),file = "S2G8T1", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G8T1, x = 2)),file = "S2G8T1", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G8T2, x = 1)),file = "S2G8T2", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G8T2, x = 2)),file = "S2G8T2", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G8T3, x = 1)),file = "S2G8T3", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G8T3, x = 2)),file = "S2G8T3", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G9T2, x = 1)),file = "S2G9T2", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G9T2, x = 2)),file = "S2G9T2", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G9T3, x = 1)),file = "S2G9T3", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G9T3, x = 2)),file = "S2G9T3", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G10T1, x = 1)),file = "S2G10T1", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G10T1, x = 2)),file = "S2G10T1", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G10T2, x = 1)),file = "S2G10T2", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G10T2, x = 2)),file = "S2G10T2", type="RESP"))
+df<- rbind(df, data.frame((OP(dataset = S2G10T3, x = 1)),file = "S2G10T3", type="HR"))
+df<- rbind(df, data.frame((OP(dataset = S2G10T3, x = 2)),file = "S2G10T3", type="RESP"))
+           
+#rethinking my life
 
 
-for (z in seq(24)){#length(good)=24
-  i = good[z]
-  for (y in seq(2)){
-    df<-data.frame(OP(dataset = i, x = y))
-    if (y == "1"){
-    #I am so sorry you have to see this messy code...  
-    assign(paste(i[[1]][[7]][[1]],"OP", "HR", sep = "_"), df)
-    }else if (y == "2"){
-    assign(paste(i[[1]][[7]][[1]],"OP", "RESP", sep = "_"), df)}
-}}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #then take median of op
 ```
